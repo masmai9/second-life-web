@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /.netlify/
+# Update sitemap URL to your live public domain when deploying
