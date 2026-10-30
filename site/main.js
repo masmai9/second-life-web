@@ -69,9 +69,70 @@ function renderDetail(){const p=selected;if(!p)return;const m=p.media?.[thumbInd
  $$('[data-thumb]').forEach(el=>el.onclick=()=>{thumbIndex=Number(el.dataset.thumb);renderDetail()});$('#detail-add').onclick=()=>{addToCart(p.id);overlay(false);openCart()}}
 function getItems(){return Object.entries(cart).map(([id,qty])=>({p:products.find(p=>String(p.id)===id),qty})).filter(x=>x.p&&x.qty>0)}
 function addToCart(id){const p=products.find(p=>String(p.id)===String(id));if(!p||p.stock<1){toast('สินค้าหมด');return}cart[id]=Math.min(p.stock,(cart[id]||0)+1);saveCart();toast('เพิ่มสินค้าลงตะกร้าแล้ว')}
-function updateCart(){let qty=0,sum=0;const items=getItems();for(const {p,qty:q} of items){qty+=q;sum+=p.price*q}$('#cart-count').textContent=qty;$('#drawer-count').textContent=`(${qty})`;$('#cart-subtotal').textContent=money(sum);$('#cart-items').innerHTML=items.map(({p,qty})=>`<div class="cart-item"><img src="${escapeHtml(safeMediaUrl(p.media?.[0]?.url)||'/images/watch-gold.svg')}" alt="${escapeHtml(p.title)}"><div><h3>${escapeHtml(p.title)}</h3><small>${escapeHtml(p.condition||'')}</small><div class="qty-actions"><button data-qty="-1" data-id="${escapeHtml(p.id)}" aria-label="ลดจำนวน">−</button>${qty}<button data-qty="1" data-id="${escapeHtml(p.id)}" aria-label="เพิ่มจำนวน">+</button></div></div><strong>${money(p.price*qty)}</strong></div>`).join('')||'<div class="empty">ยังไม่มีสินค้าในตะกร้า</div>';$('#begin-checkout').disabled=!items.length;$$('[data-qty]').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const p=products.find(p=>String(p.id)===id);cart[id]=Math.min(p.stock,Math.max(0,(cart[id]||0)+Number(b.dataset.qty)));if(!cart[id])delete cart[id];saveCart()})}
-function checkout(){const items=getItems();if(!items.length)return;overlay(true);$('#checkout-modal').hidden=false;$('#checkout-error').textContent='';$('#checkout-review').innerHTML=items.map(({p,qty})=>`<div><span>${escapeHtml(p.title)} × ${qty}</span><strong>${money(p.price*qty)}</strong></div>`).join('')+`<div style="font-weight:700;border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><span>ยอดสินค้า (ไม่รวมค่าจัดส่ง)</span><strong>${money(items.reduce((s,{p,qty})=>s+p.price*qty,0))}</strong></div>`}
-async function submitCheckout(e){e.preventDefault();const form=e.currentTarget;const fd=new FormData(form);const err=$('#checkout-error');const btn=$('#pay-button');err.textContent='';if(!LIVE){err.textContent='นี่เป็นโหมดทดลอง ยังไม่สามารถรับเงินจริงได้ ต้องเชื่อม Supabase และ Stripe ก่อน';return}btn.disabled=true;btn.textContent='กำลังสร้างคำสั่งซื้อ...';try{const items=getItems().map(({p,qty})=>({id:p.id,qty}));const r=await fetch('/.netlify/functions/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,customer:{name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),address:fd.get('address')},delivery:fd.get('delivery')})});const out=await r.json();if(!r.ok)throw Error(out.error||'ไม่สามารถเริ่มชำระเงินได้');if(!out.url||!out.url.startsWith('https://checkout.stripe.com/'))throw Error('ลิงก์จ่ายเงินไม่ถูกต้อง');window.location.assign(out.url)}catch(ex){err.textContent=ex.message;btn.disabled=false;btn.textContent='CONTINUE TO SECURE PAYMENT ↗'}}
+function updateCart(){let qty=0,sum=0;const items=getItems();for(const {p,qty:q} of items){qty+=q;sum+=p.price*q}$('#cart-count').textContent=qty;$('#drawer-count').textContent=`(${qty})`;$('#cart-subtotal').textContent=money(sum);$('#cart-items').innerHTML=items.map(({p,qty})=>`<div class="cart-item"><img src="${escapeHtml(safeMediaUrl(p.media?.[0]?.url)||'/images/watch-gold.svg')}" alt="${escapeHtml(p.title)}"><div><h3>${escapeHtml(p.title)}</h3><small>${escapeHtml(p.condition||'')}</small><div class="qty-actions"><button data-qty="-1" data-id="${escapeHtml(p.id)}" aria-label="ลดจำนวน">−</button>${qty}<button data-qty="1" data-id="${escapeHtml(p.id)}" aria-label="เพิ่มจำนวน">+</button></div></div><strong>${money(p.price*qty)}</strong></div>`).join('')||'<div class="empty">ยังไม่มีสินค้าในตะกร้า</div>';$('#begin-checkout').disabled=!items.length&&!readPending();$('#begin-checkout').textContent=readPending()?'กลับไปยังรายการชำระเงิน ↗':'PROCEED TO CHECKOUT ↗';$$('[data-qty]').forEach(b=>b.onclick=()=>{const id=b.dataset.id;const p=products.find(p=>String(p.id)===id);cart[id]=Math.min(p.stock,Math.max(0,(cart[id]||0)+Number(b.dataset.qty)));if(!cart[id])delete cart[id];saveCart()})}
+const bankKey='secondlife_bank_pending_v1';
+function readPending(){try{return JSON.parse(localStorage.getItem(bankKey)||'null')}catch{return null}}
+function savePending(o){if(o)localStorage.setItem(bankKey,JSON.stringify(o));else localStorage.removeItem(bankKey)}
+function renderBankPayment(pending){
+ overlay(true);$('#checkout-modal').hidden=false;$('.checkout-content').hidden=true;$('#checkout-form').hidden=true;$('#bank-pay-step').hidden=false;
+ $('#bank-slip-error').textContent='';$('#bank-slip-file').value='';
+ $('#bank-qr').src=pending.qr_png?.startsWith('data:image/png;base64,')?pending.qr_png:'';
+ $('#bank-total').textContent=money(pending.total_thb);
+ $('#bank-receiver').textContent=pending.receiver_name?`บัญชีรับเงิน: ${pending.receiver_name} (ยืนยันชื่ออีกครั้งในแอปธนาคาร)`:'โปรดตรวจสอบชื่อบัญชีผู้รับในแอปธนาคารก่อนโอน';
+ $('#bank-order-id').textContent=pending.order_id||'';
+ $('#bank-deadline').textContent=pending.expires_at?new Date(pending.expires_at).toLocaleString('th-TH'):'—';
+ $('#bank-save-qr').href=pending.qr_png?.startsWith('data:image/png;base64,')?pending.qr_png:'#';
+ const expired=Date.now()>new Date(pending.expires_at).getTime();
+ $('#bank-slip-success').hidden=!pending.submitted;
+ $('#bank-slip-success').innerHTML=pending.status==='paid'?'✓ ร้านยืนยันยอดเงินเข้าแล้ว — ชำระเงินเรียบร้อย': '✓ รับสลิปแล้ว — รอร้านตรวจสอบยอดเงินเข้าและยืนยันคำสั่งซื้อ<br><small>การแนบสลิปยังไม่ถือว่าชำระเงินสำเร็จ</small>';
+ if(pending.status==='cancelled')$('#bank-slip-error').textContent='ร้านยกเลิกคำสั่งซื้อแล้ว หากได้โอนเงินไปแล้วโปรดติดต่อร้าน';
+ $('#bank-slip-area').hidden=Boolean(pending.submitted)||expired||pending.status==='cancelled';
+ $('#bank-reset').hidden=!pending.submitted&&!expired&&pending.status!=='cancelled';$('#bank-reset').textContent=pending.submitted?'เลือกซื้อสินค้าใหม่ ↗':'รายการหมดอายุ — เริ่มคำสั่งซื้อใหม่ ↗';
+ if(expired&&!pending.submitted)$('#bank-slip-error').textContent='คำสั่งซื้อนี้หมดเวลาจองแล้ว โปรดอย่าโอนเงินเพิ่ม หากโอนไปแล้วให้ติดต่อร้านเพื่อตรวจสอบ';
+}
+function checkout(){
+ const pending=readPending();if(pending){renderBankPayment(pending);return}
+ const items=getItems();if(!items.length)return;
+ overlay(true);$('#checkout-modal').hidden=false;$('.checkout-content').hidden=false;$('#checkout-form').hidden=false;$('#bank-pay-step').hidden=true;
+ $('#checkout-error').textContent='';$('#pay-button').disabled=false;$('#pay-button').textContent='CREATE PROMPTPAY QR ↗';
+ $('#checkout-review').innerHTML=items.map(({p,qty})=>`<div><span>${escapeHtml(p.title)} × ${qty}</span><strong>${money(p.price*qty)}</strong></div>`).join('')+`<div style="font-weight:700;border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><span>ยอดสินค้า (ไม่รวมค่าจัดส่ง)</span><strong>${money(items.reduce((s,{p,qty})=>s+p.price*qty,0))}</strong></div>`;
+}
+async function submitCheckout(e){
+ e.preventDefault();const fd=new FormData(e.currentTarget);const err=$('#checkout-error');const btn=$('#pay-button');err.textContent='';
+ if(!LIVE){err.textContent='โหมดทดลองยังรับเงินจริงไม่ได้ ต้องเชื่อม Supabase และตั้งค่า PROMPTPAY_ID บน Netlify ก่อน';return}
+ btn.disabled=true;btn.textContent='กำลังสร้าง PromptPay QR...';
+ try{
+  const items=getItems().map(({p,qty})=>({id:p.id,qty}));
+  const r=await fetch('/.netlify/functions/create-bank-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,customer:{name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),address:fd.get('address')},delivery:fd.get('delivery')})});
+  const out=await r.json();if(!r.ok)throw Error(out.error||'สร้างคำสั่งซื้อไม่สำเร็จ');
+  if(!out.order_id||!out.qr_png||!out.token)throw Error('ข้อมูล PromptPay ไม่สมบูรณ์');
+  savePending(out);renderBankPayment(out);updateCart();
+ }catch(ex){err.textContent=ex.message;btn.disabled=false;btn.textContent='CREATE PROMPTPAY QR ↗'}
+}
+async function submitBankSlip(){
+ const pending=readPending();const err=$('#bank-slip-error');const btn=$('#bank-slip-submit');const file=$('#bank-slip-file').files?.[0];err.textContent='';
+ if(!pending?.order_id||pending.submitted){err.textContent='ไม่พบคำสั่งซื้อ';return}
+ if(Date.now()>new Date(pending.expires_at).getTime()){err.textContent='คำสั่งซื้อหมดเวลาแล้ว โปรดติดต่อร้าน';return}
+ if(!file){err.textContent='กรุณาเลือกภาพสลิปก่อน';return}
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>3000000||file.size<128){err.textContent='รองรับ JPG, PNG, WEBP ไม่เกิน 3 MB';return}
+ btn.disabled=true;btn.textContent='กำลังส่งสลิป...';
+ try{
+  const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(Error('เปิดไฟล์ไม่สำเร็จ'));reader.readAsDataURL(file)});
+  const r=await fetch('/.netlify/functions/submit-bank-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:pending.order_id,token:pending.token,file_base64:data})});
+  const result=await r.json();if(!r.ok)throw Error(result.error||'ส่งสลิปไม่สำเร็จ');
+  savePending({...pending,submitted:true,status:'pending_review'});cart={};saveCart();renderBankPayment(readPending());
+ }catch(e){err.textContent=e.message}finally{btn.disabled=false;btn.textContent='ส่งหลักฐานการโอนให้ร้าน ↗'}
+}
+async function refreshBankStatus(){
+ const p=readPending();if(!p?.token)return;
+ const b=$('#bank-refresh');b.disabled=true;
+ try{
+  const r=await fetch('/.netlify/functions/bank-order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:p.order_id,token:p.token})});
+  const out=await r.json();if(!r.ok)throw Error(out.error||'ตรวจสอบสถานะไม่สำเร็จ');
+  savePending({...p,expires_at:out.expires_at,status:out.status,submitted:['pending_review','paid'].includes(out.status)});
+  renderBankPayment(readPending());
+ }catch(e){$('#bank-slip-error').textContent=e.message}finally{b.disabled=false}
+}
 async function init(){
  if(!LIVE)$('#mode-notice').textContent='โหมดต้นแบบ: สินค้าและราคาเป็นตัวอย่าง ยังไม่เปิดรับชำระเงินจริง';
  else $('#mode-notice').textContent='โปรดตรวจสอบรายละเอียดสินค้าและเงื่อนไขก่อนสั่งซื้อ';
@@ -97,6 +158,9 @@ async function init(){
  $$('[data-close]').forEach(b=>b.onclick=closeAll);
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
  $('#begin-checkout').onclick=checkout;
+ $('#bank-slip-submit').onclick=submitBankSlip;
+ $('#bank-refresh').onclick=refreshBankStatus;
+ $('#bank-reset').onclick=()=>{savePending(null);overlay(false);updateCart();toast('สามารถเลือกสินค้าและทำคำสั่งซื้อใหม่ได้แล้ว')};
  $('#delivery-select').onchange=e=>{const ship=e.target.value==='shipping';$('#address-label').hidden=!ship;$('#address-label textarea').required=ship};
  $('#checkout-form').onsubmit=submitCheckout;
  window.onpopstate=()=>{
@@ -107,6 +171,6 @@ async function init(){
   if(p){navigateCategory(p.category,false);openDetail(p,false)}
   else{overlay(false);navigateCategory(params.get('category'),false)}
  };
- if(new URLSearchParams(location.search).has('cancelled'))toast('ยกเลิกการชำระเงินแล้ว สามารถกลับไปเลือกสินค้าใหม่ได้');
+ // PromptPay checkout is processed on-site; no Stripe redirect is used.
 }
 init().catch(err=>{console.error(err);toast('ไม่สามารถเริ่มเว็บไซต์ได้: '+err.message)});

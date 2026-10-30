@@ -61,3 +61,17 @@ export async function deleteCategory(slug){
  if(!LIVE){setDemoCategories(demoCategories().filter(c=>c.slug!==slug));return;}
  await sbFetch(`/rest/v1/categories?slug=eq.${encodeURIComponent(slug)}`,{method:'DELETE'});
 }
+
+// Private proof of transfer: admin can request short-lived signed URLs, never public URLs.
+export async function signedBankSlipUrl(path){
+ if(!/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(path))throw Error('ชื่อไฟล์สลิปไม่ถูกต้อง');
+ const token=await authToken();if(!token)throw Error('กรุณาเข้าสู่ระบบอีกครั้ง');
+ const r=await fetch(`${base}/storage/v1/object/sign/payment-slips/${path}`,{
+  method:'POST',headers:{apikey:anon,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:180})
+ });
+ const data=await r.json();if(!r.ok||!data.signedURL)throw Error(data.message||'ไม่สามารถเปิดสลิปได้');
+ return `${base}/storage/v1${data.signedURL}`;
+}
+export async function reviewBankOrder(orderId,action){
+ return sbFetch('/rest/v1/rpc/admin_bank_review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({p_order_id:orderId,p_action:action})});
+}

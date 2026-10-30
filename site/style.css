@@ -78,3 +78,26 @@ body.theme-tech{--bg:#edf4f7;--ink:#122633;--muted:#617785;--panel:#e1edf1;--lin
 }
 @media (prefers-reduced-motion:reduce){.mode-card,.mode-card-image{transition:none}}
 @media (min-width:761px) and (max-width:1250px){.nav-story{display:none!important}#nav-categories{gap:17px}.header{gap:12px}}
+
+/* Second Life V3 — manual PromptPay checkout */
+.bank-pay-step{padding:52px clamp(18px,5vw,66px) 38px;margin:auto;max-width:610px;text-align:center}
+.bank-pay-step h2{font:400 clamp(35px,6vw,52px)/1.2 var(--font-serif);margin:13px 0}
+.bank-pay-step .muted{font-size:13px;line-height:1.7}
+.bank-qr-card{margin:20px auto 16px;background:#fff;max-width:338px;padding:18px 15px 16px;display:flex;flex-direction:column;align-items:center;gap:7px;border:1px solid #dedede;color:#171717}
+.bank-qr-card img{width:min(280px,100%);height:auto;aspect-ratio:1;object-fit:contain}
+.bank-qr-card strong{font-size:30px;font-weight:750}
+.bank-qr-card span{font-size:12px;line-height:1.6}
+.bank-order-meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere;margin:12px 0}
+.bank-order-meta strong{color:var(--ink)}
+.bank-warning{padding:14px;margin:20px 0;text-align:left;background:#d99e2915;border-left:3px solid #b38439;line-height:1.7;font-size:12px}
+.bank-slip-label{display:block;margin:16px 0 5px;text-align:left;font-size:13px;font-weight:700}
+.bank-slip-label input{display:block;width:100%;margin-top:9px;padding:12px;background:var(--bg);border:1px solid var(--line)}
+#bank-slip-submit{margin-top:16px}
+.bank-success{padding:20px;border:1px solid var(--line);background:#409b6930;font-size:16px;line-height:1.7}
+.bank-success small{font-size:12px;color:var(--muted)}
+#bank-reset{margin-top:12px}
+.order-payment{margin:12px 0;padding:11px;background:#bf9b4715;font-size:12px}
+.order-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+.order-actions button{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:10px 13px;font-size:11px;cursor:pointer}
+.order-actions .approve{background:var(--btn);color:var(--btn-ink)}
+@media(max-width:760px){.bank-pay-step{padding:54px 23px 30px}.bank-qr-card img{width:min(270px,100%)}.bank-qr-card strong{font-size:25px}}
