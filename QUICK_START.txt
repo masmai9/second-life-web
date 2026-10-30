@@ -1,0 +1,14 @@
+SECOND LIFE WEBSITE PROTOTYPE v1.0
+
+TRY LOCALLY (NO NPM / NO FRAMEWORK REQUIRED)
+Windows: double-click START_WINDOWS.bat (Python must be installed)
+Mac: double-click START_MAC.command (Python 3 must be installed)
+Other: python -m http.server 8000 --directory site
+Then visit http://localhost:8000
+Admin demo: http://localhost:8000/admin.html
+
+LIVE WEBSITE
+Read README_TH.md for Netlify + Supabase + Stripe setup.
+Do NOT place Stripe keys or Supabase service-role keys in site/config.js.
+
+Demo prices and images are fictional. No real charges in demo mode.

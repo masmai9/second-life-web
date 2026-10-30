@@ -1,0 +1,17 @@
+SECOND LIFE — วิธีเอาขึ้นเว็บแบบเต็ม (GitHub + Netlify)
+
+1) แตก ZIP นี้ จะเห็น site, netlify, supabase, netlify.toml อยู่โฟลเดอร์เดียวกัน
+2) สมัคร https://github.com แล้วสร้าง New repository (เช่น second-life-web)
+3) กด Add file > Upload files เลือก/ลากไฟล์และโฟลเดอร์ทั้งหมดภายในโฟลเดอร์ที่แตก ZIP (อย่าอัปโหลด ZIP ทั้งก้อน)
+4) ต้องเห็น netlify.toml และ site/ ที่ระดับบนสุดของ repo แล้ว Commit changes
+5) เข้า https://app.netlify.com/start > Import from Git > GitHub > เลือก repo ที่เพิ่งสร้าง
+6) Publish directory = site, Functions directory = netlify/functions, Build command เว้นว่าง
+7) กด Deploy site ได้ URL ลักษณะ https://ชื่อที่สุ่ม.netlify.app
+8) เปลี่ยนชื่อใน Netlify: Project configuration > General > Project details > Change project name (ชื่อว่างเท่านั้น)
+
+เว็บเริ่มต้นเป็น DEMO: ราคา/สินค้าเป็นตัวอย่าง ยังไม่รับเงินจริง
+เปิด Supabase และ Stripe ตาม README_TH.md ก่อนเปิดขายจริง
+ห้ามวาง Stripe secret key หรือ Supabase service-role key ลงใน GitHub/site/config.js
+
+ลองเร็วโดยไม่ใช้ GitHub: เข้า https://app.netlify.com/drop แล้วลากเฉพาะโฟลเดอร์ site/
+จะเห็นหน้าร้าน แต่ Functions สำหรับจ่ายเงิน/SEO สินค้าแยกจะยังไม่ทำงานแบบครบ
