@@ -8,5 +8,5 @@ window.SECONDLIFE_CONFIG = {
   lineUrl: '',             // e.g. https://line.me/R/ti/p/@youraccount
   phone: '',
   mapUrl: '',
-  siteUrl: ''              // e.g. https://second-life-shop.netlify.app
+  siteUrl: 'https://second-life-web.netlify.app'              // e.g. https://second-life-shop.netlify.app
 };
