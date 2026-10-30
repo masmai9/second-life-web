@@ -1,3 +1,4 @@
+import {DEFAULT_CATEGORIES,sortedCategories} from './categories.js';
 import { DEMO_PRODUCTS } from './data.js';
 const cfg = window.SECONDLIFE_CONFIG || {};
 export const LIVE = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
@@ -37,4 +38,26 @@ export async function uploadMedia(file){if(!LIVE){if(file.type.startsWith('video
  const r=await fetch(`${base}/storage/v1/object/media/${fileName}`,{method:'POST',headers:{apikey:anon,Authorization:`Bearer ${token}`,'Content-Type':file.type,'x-upsert':'false'},body:file});
  if(!r.ok){let e=await r.text();throw Error('อัปโหลดไม่สำเร็จ: '+e)}
  return {type:file.type.startsWith('video/')?'video':'image',url:`${base}/storage/v1/object/public/media/${fileName}`};
+}
+
+// Categories are managed independently from products; existing product IDs and media remain untouched.
+const demoCategoryKey = 'secondlife_demo_categories_v1';
+export function demoCategories(){try{const v=JSON.parse(localStorage.getItem(demoCategoryKey)||'null');if(Array.isArray(v))return sortedCategories(v)}catch{}return DEFAULT_CATEGORIES.map(c=>({...c}));}
+function setDemoCategories(items){localStorage.setItem(demoCategoryKey,JSON.stringify(items));}
+export async function listCategories(admin=false){
+ if(!LIVE)return sortedCategories(demoCategories().filter(c=>admin||c.is_active!==false));
+ const suffix=admin?'':'&is_active=eq.true';
+ const rows=await sbFetch(`/rest/v1/categories?select=*&order=sort_order.asc,slug.asc${suffix}`);
+ return rows||[];
+}
+export async function saveCategory(category,oldSlug=null){
+ const payload={slug:category.slug,name:category.name,eyebrow:category.eyebrow,headline:category.headline,emphasis:category.emphasis,tagline_th:category.tagline_th,description:category.description,banner_url:category.banner_url,theme_preset:category.theme_preset,accent_color:category.accent_color,sort_order:category.sort_order,is_active:category.is_active};
+ if(!LIVE){const arr=demoCategories();const i=arr.findIndex(c=>c.slug===(oldSlug||category.slug));if(i<0)arr.push(payload);else arr[i]=payload;setDemoCategories(arr);return payload;}
+ const existing=Boolean(oldSlug);
+ const rows=await sbFetch(existing?`/rest/v1/categories?slug=eq.${encodeURIComponent(oldSlug)}`:'/rest/v1/categories',{method:existing?'PATCH':'POST',headers:{'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(payload)});
+ return rows?.[0];
+}
+export async function deleteCategory(slug){
+ if(!LIVE){setDemoCategories(demoCategories().filter(c=>c.slug!==slug));return;}
+ await sbFetch(`/rest/v1/categories?slug=eq.${encodeURIComponent(slug)}`,{method:'DELETE'});
 }
